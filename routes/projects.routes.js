@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { TEST } from "../config.js";
+import { getProjectById, getProjects } from "../controllers/projects.controller.js";
 
 const router = Router();
 
-router.get("/", (req, resp)=>{
-    resp.send(TEST)
-});
+router.get('/projects', getProjects);
+
+router.get('/projects/:id', getProjectById);
 
 export default router;
