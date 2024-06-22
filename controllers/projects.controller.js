@@ -6,7 +6,7 @@ export const getProjects = async (req, res) => {
   try {
     pool = await getConnection();
     const result = await pool.request().query(getProjectsQuery);
-    res.json(result.recordset);
+    res.json(result.recordset.map(r=>({...r, Members: r.Members?.split(';') || []})))
   } catch (error) {
     res.status(500);
     res.send(error.message);
