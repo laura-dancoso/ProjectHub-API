@@ -1,0 +1,1 @@
+export const mapStringToArray = (data, separator = ';') => data?.split(separator) || [];
