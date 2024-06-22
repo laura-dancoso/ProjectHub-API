@@ -1,13 +1,18 @@
-import { closeConnection, getConnection, sql } from "../database/connection.js";
+import { closeConnection, getConnection } from "../database/connection.js";
 import { getProjectsQuery, getProjectByIdsQuery } from "../database/queries.js";
 import { mapStringToArray } from "../utils.js";
+import { getImgtUrl } from './s3.controller.js'
 
 export const getProjects = async (req, res) => {
   let pool;
   try {
     pool = await getConnection();
     const result = await pool.request().query(getProjectsQuery);
-    res.json(result.recordset.map(r => ({ ...r, Members: mapStringToArray(r.Members) })))
+    let projects = result.recordset.map(r => ({ ...r, Members: mapStringToArray(r.Members) }));
+    for (let p of projects){
+      p.ProjectImgUrl = await getImgtUrl(p.ProjectImageKey)
+    }
+    res.json(projects)
   } catch (error) {
     res.status(500);
     res.send(error.message);
@@ -39,7 +44,14 @@ export const getProjectById = async (req, res) => {
         const [key, value] = mapStringToArray(link, ': ');
         return { Name: key, Url: value };
       }),
-      Members: mapStringToArray(resource.Members)
+      Members: mapStringToArray(resource.Members),
+      ProjectImgUrls: []
+    };
+    console.log(resource.ProjectImageKeys)
+    for (let p of mapStringToArray(resource.ProjectImageKeys)){
+      console.log(p)
+      let projectImgUrl = await getImgtUrl(p);
+      resource.ProjectImgUrls.push(projectImgUrl);
     }
     return res.json(resource);
   } catch (error) {

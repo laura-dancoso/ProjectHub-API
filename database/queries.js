@@ -2,6 +2,7 @@ export const getProjectsQuery = `
 SELECT [ProjectId]
       ,[Title]
       ,[Members]
+      ,[ProjectImageKey]
   FROM [ProjectHub11].[dbo].[ProjectsDashboardView]
 `;
 
@@ -18,6 +19,7 @@ SELECT [ProjectId]
       ,[ProfessorName]
       ,[Members]
       ,[ProjectUrl]
+      ,[ProjectImageKeys]
   FROM [ProjectHub11].[dbo].[ProjectDetail]
   WHERE ProjectId = @id
 `;
