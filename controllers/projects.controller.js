@@ -47,9 +47,7 @@ export const getProjectById = async (req, res) => {
       Members: mapStringToArray(resource.Members),
       ProjectImgUrls: []
     };
-    console.log(resource.ProjectImageKeys)
     for (let p of mapStringToArray(resource.ProjectImageKeys)){
-      console.log(p)
       let projectImgUrl = await getImgtUrl(p);
       resource.ProjectImgUrls.push(projectImgUrl);
     }
