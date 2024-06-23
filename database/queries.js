@@ -1,3 +1,5 @@
+// Projects
+
 export const getProjectsQuery = `
 SELECT [ProjectId]
       ,[Title]
@@ -20,6 +22,22 @@ SELECT [ProjectId]
       ,[Members]
       ,[ProjectUrl]
       ,[ProjectImageKeys]
-  FROM [ProjectHub11].[dbo].[ProjectDetail]
+  FROM [ProjectHub11].[dbo].[ProjectDetailView]
   WHERE ProjectId = @id
+`;
+
+// Degrees
+
+export const getDegreesQuery = `
+SELECT [DegreeId]
+      ,[Name]
+FROM [ProjectHub11].[dbo].[Degrees]
+`;
+
+// Subjects
+
+export const getSubjectsQuery = `
+SELECT [SubjectId]
+      ,[Name]
+FROM [ProjectHub11].[dbo].[Subjects]
 `;
