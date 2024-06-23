@@ -26,31 +26,24 @@ CREATE TABLE dbo.Degrees (
 
 CREATE TABLE dbo.Subjects (
     SubjectId INT PRIMARY KEY IDENTITY(1,1),
-    Name NVARCHAR(100) NOT NULL,
-    DegreeId INT,
-    CONSTRAINT FK_Subjects_Degrees FOREIGN KEY (DegreeId) REFERENCES dbo.Degrees(DegreeId)
+    Name NVARCHAR(100) NOT NULL
 );
 
 CREATE TABLE dbo.Projects (
     ProjectId INT PRIMARY KEY IDENTITY(1,1),
     SubjectId INT,
-    ProfessorId INT,
+    DegreeId INT,
+    ProfessorName NVARCHAR(50),
     Description NVARCHAR(MAX) NOT NULL,
     CreationDate DATE NOT NULL,
     Title NVARCHAR(255) NOT NULL,
     ShortDescription NVARCHAR(255),
     RepoUrl NVARCHAR(255) NULL,
     ProjectUrl NVARCHAR(255) NULL,
+    Members NVARCHAR(255) NOT NULL,    
+    ProjectImageKey NVARCHAR(255) NULL,
     CONSTRAINT FK_Projects_Subjects FOREIGN KEY (SubjectId) REFERENCES dbo.Subjects(SubjectId),
-    CONSTRAINT FK_Projects_Users FOREIGN KEY (ProfessorId) REFERENCES dbo.Users(UserId)
-);
-
-CREATE TABLE dbo.ProjectMembers (
-    ProjectId INT,
-    MemberId INT,
-    CONSTRAINT FK_ProjectMembers_Projects FOREIGN KEY (ProjectId) REFERENCES dbo.Projects(ProjectId),
-    CONSTRAINT FK_ProjectMembers_Users FOREIGN KEY (MemberId) REFERENCES dbo.Users(UserId),
-    PRIMARY KEY (ProjectId, MemberId)
+    CONSTRAINT FK_Projects_Degrees FOREIGN KEY (DegreeId) REFERENCES dbo.Degrees(DegreeId)
 );
 
 CREATE TABLE dbo.Technologies (
@@ -84,8 +77,8 @@ CREATE TABLE CoverImages (
 );
 
 -- Views
-
-CREATE VIEW [dbo].[ProjectDetail] AS
+GO
+CREATE VIEW [dbo].[ProjectDetailView] AS
 WITH DistinctTechnologies AS (
     SELECT
         p.ProjectId,
@@ -104,17 +97,6 @@ DistinctLinks AS (
     FROM
         dbo.Projects p
         LEFT JOIN dbo.Links l ON p.ProjectId = l.ProjectId
-    GROUP BY
-        p.ProjectId
-),
-DistinctMembers AS (
-    SELECT
-        p.ProjectId,
-        STRING_AGG(pmem.UserName, ';') AS Members
-    FROM
-        dbo.Projects p
-        LEFT JOIN dbo.ProjectMembers pm ON p.ProjectId = pm.ProjectId
-        LEFT JOIN dbo.Users pmem ON pm.MemberId = pmem.UserId
     GROUP BY
         p.ProjectId
 ),
@@ -138,18 +120,16 @@ SELECT
     dl.OtherLinks,
     d.Name AS DegreeName,
     s.Name AS SubjectName,
-    u.UserName AS ProfessorName,
-    dm.Members,
+    p.ProfessorName,
+    p.Members,
     ci.ImageKeys as ProjectImageKeys,
     p.ProjectUrl
 FROM
     dbo.Projects p
     LEFT JOIN dbo.Subjects s ON p.SubjectId = s.SubjectId
-    LEFT JOIN dbo.Degrees d ON s.DegreeId = d.DegreeId
-    LEFT JOIN dbo.Users u ON p.ProfessorId = u.UserId
+    LEFT JOIN dbo.Degrees d ON p.DegreeId = d.DegreeId
     LEFT JOIN DistinctTechnologies dt ON p.ProjectId = dt.ProjectId
     LEFT JOIN DistinctLinks dl ON p.ProjectId = dl.ProjectId
-    LEFT JOIN DistinctMembers dm ON p.ProjectId = dm.ProjectId
     LEFT JOIN CoverImages ci ON p.ProjectId = ci.ProjectId;
 GO
 
@@ -157,15 +137,8 @@ CREATE VIEW [dbo].[ProjectsDashboardView] AS
 SELECT
     p.ProjectId,
     p.Title,
-    STRING_AGG(u.UserName, ';') AS Members,
+    p.Members,
     p.ProjectImageKey
 FROM
-    dbo.Projects p
-    LEFT JOIN dbo.ProjectMembers pm ON p.ProjectId = pm.ProjectId
-    LEFT JOIN dbo.Users u ON pm.MemberId = u.UserId
-GROUP BY
-    p.ProjectId,
-    p.Title,
-    p.ProjectImageKey;
-
+    dbo.Projects p;
 GO
