@@ -1,7 +1,8 @@
+import { BUCKET_COVERS_FILE, BUCKET_PROJECTS_FILE } from "../config.js";
 import { closeConnection, getConnection, sql } from "../database/connection.js";
 import { getProjectsQuery, getProjectByIdsQuery } from "../database/queries.js";
 import { mapStringToArray } from "../utils.js";
-import { getImgtUrl } from './s3.controller.js'
+import { getImgtUrl, postImage, deleteImage } from './s3.controller.js'
 
 export const getProjects = async (req, res) => {
   let pool;
@@ -77,16 +78,24 @@ export const createNewProject = async (req, res) => {
     members,
     links, // url y description
     technologies, // puede tener el id o el name - si tiene el id se relaciona directamente agrega directamente, sino se debe crear primero
-    coverImages,
   } = req.body;
 
   if (title == null || description == null || creationDate == null) {
     return res.status(400).json({ msg: "Bad Request. Please fill all required fields" });
   }
 
-  const projectImageKey = null;
+  // subir las imágenes a s3
 
-  // subir las imágenes
+  const projectImageKey = req?.files?.project ? await postImage(req?.files?.project[0], BUCKET_PROJECTS_FILE) : null;
+  const coverImages = [];
+
+  for (let i = 0; i < req?.files?.covers?.length || 0; i++) {
+    const file = req?.files?.covers[i];
+    const fileImageKey = await postImage(file, BUCKET_COVERS_FILE) ?? null;
+    coverImages.push(fileImageKey);
+  }
+
+
   let pool;
   try {
     pool = await getConnection();
@@ -163,7 +172,18 @@ export const createNewProject = async (req, res) => {
       }
 
       // coverImages
-      // TODO
+      for (let i = 0; i < coverImages?.length || 0; i++) {
+        const parameterProjectId = `CoverProjectId${i}`;
+        const parameterImgKey = `ImageKey${i}`;
+
+        const result = await request
+          .input(parameterProjectId, projectResult.recordset[0].id)
+          .input(parameterImgKey, coverImages[i])
+          .batch(`
+                INSERT INTO dbo.CoverImages (ProjectId, ImageKey)
+                VALUES (@${parameterProjectId}, @${parameterImgKey});
+            `);
+      }
 
       await transaction.commit();
       res.status(200);
@@ -193,25 +213,42 @@ export const deleteProjectById = async (req, res) => {
     pool = await getConnection();
     const transaction = pool.transaction()
 
-    await transaction.begin();
+    try {
 
-    const request = transaction.request().input("ProjectId", req.params.id);
+      await transaction.begin();
 
-    const queries = [
-      `DELETE FROM dbo.ProjectTechnologies WHERE ProjectId = @ProjectId;`,
-      `DELETE FROM dbo.Links WHERE ProjectId = @ProjectId;`,
-      `DELETE FROM dbo.CoverImages WHERE ProjectId = @ProjectId;`,
-      `DELETE FROM dbo.Projects WHERE ProjectId = @ProjectId;`
-    ];
-    for (let i = 0; i < queries.length; i++) {
-      let query = queries[i];
-      await request.batch(query);
+      const request = transaction.request().input("ProjectId", req.params.id);
+
+      let imageKeys = [];
+
+      const queries = [
+        `SELECT ProjectImageKey as ImageKey FROM dbo.Projects WHERE ProjectId = @ProjectId;`,
+        `SELECT ImageKey FROM dbo.CoverImages WHERE ProjectId = @ProjectId;`,
+        `DELETE FROM dbo.ProjectTechnologies WHERE ProjectId = @ProjectId;`,
+        `DELETE FROM dbo.Links WHERE ProjectId = @ProjectId;`,
+        `DELETE FROM dbo.CoverImages WHERE ProjectId = @ProjectId;`,
+        `DELETE FROM dbo.Projects WHERE ProjectId = @ProjectId;`
+      ];
+      for (let i = 0; i < queries.length; i++) {
+        let query = queries[i];
+        const result = await request.batch(query);
+        if(i<2){
+          imageKeys = imageKeys.concat(result.recordset.map(i=>i.ImageKey));
+        }
+      }
+
+      for (let i = 0; i < imageKeys.length || 0; i++) {
+        await deleteImage(imageKeys[i]);
+      }
+      
+      await transaction.commit();
+      res.sendStatus(204);
+    } catch(error) {
+      console.error(error);
+      await transaction.rollback();
     }
-    await transaction.commit();
-    res.sendStatus(204);
   } catch (error) {
     console.error(error);
-    await transaction.rollback();
     res.status(500);
     res.send(error.message);
   }
@@ -250,40 +287,40 @@ export const updateProjectById = async (req, res) => {
       const request = transaction.request();
 
       let updateQuery = [];
-      if(title){
+      if (title) {
         updateQuery.push(`Title = @Title`);
       }
-      if(description){
+      if (description) {
         updateQuery.push(`Description = @Description`);
       }
-      if(shortDescription){
+      if (shortDescription) {
         updateQuery.push(`ShortDescription = @ShortDescription`);
       }
-      if(subjectId){
+      if (subjectId) {
         updateQuery.push(`SubjectId = @SubjectId`);
       }
-      if(degreeId){
+      if (degreeId) {
         updateQuery.push(`DegreeId = @DegreeId`);
       }
-      if(professorName){
-        updateQuery.push( `ProfessorName = @ProfessorName`);
+      if (professorName) {
+        updateQuery.push(`ProfessorName = @ProfessorName`);
       }
-      if(creationDate){
+      if (creationDate) {
         updateQuery.push(`CreationDate = @CreationDate`);
       }
-      if(repoUrl){
+      if (repoUrl) {
         updateQuery.push(`RepoUrl = @RepoUrl`);
       }
-      if(projectUrl){
+      if (projectUrl) {
         updateQuery.push(`ProjectUrl = @ProjectUrl`);
       }
-      if(members){
+      if (members) {
         updateQuery.push(`Members = @Members`);
       }
       const query = `
       UPDATE dbo.Projects SET ${updateQuery.join(', ')} WHERE ProjectId = @ProjectId;
       `;
-        
+
       // update project
       const projectResult = await request
         .input("ProjectId", sql.Int, projectId)
