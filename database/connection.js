@@ -31,7 +31,4 @@ export const closeConnection = async (pool) => {
   }
 };
 
-
-
-
 export { sql };

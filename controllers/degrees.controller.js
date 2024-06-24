@@ -9,6 +9,7 @@ export const getDegrees = async (req, res) => {
     let degrees = result.recordset;
     res.json(degrees)
   } catch (error) {
+    console.error(error);
     res.status(500);
     res.send(error.message);
   }

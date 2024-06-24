@@ -9,6 +9,7 @@ export const getSubjects = async (req, res) => {
     let subjects = result.recordset;
     res.json(subjects)
   } catch (error) {
+    console.error(error);
     res.status(500);
     res.send(error.message);
   }
