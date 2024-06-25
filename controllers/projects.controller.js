@@ -218,6 +218,12 @@ export const deleteProjectById = async (req, res) => {
       await transaction.begin();
 
       const request = transaction.request().input("ProjectId", req.params.id);
+      const projectResult = await request.batch(`SELECT ProjectId as id FROM dbo.Projects WHERE ProjectId = @ProjectId;`);
+      if (projectResult.recordset.length == 0) {
+        res.status(404);
+        res.send("Resource not found");
+        return;
+      }
 
       let imageKeys = [];
 
