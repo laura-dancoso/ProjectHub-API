@@ -11,8 +11,8 @@ router.get('/projects/:id', getProjectById);
 const storage = multer.memoryStorage();
 const upload = multer({ storage:  storage})
 const files = upload.fields([{ name: 'project', maxCount: 1 }, { name: 'covers', maxCount: 5 }])
+
 router.post('/projects', files, createNewProject);
-// router.post('/projects', createNewProject);
 
 router.delete('/projects/:id', deleteProjectById);
 

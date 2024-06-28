@@ -5,7 +5,7 @@ SELECT [ProjectId]
       ,[Title]
       ,[Members]
       ,[ProjectImageKey]
-  FROM [ProjectHub11].[dbo].[ProjectsDashboardView]
+  FROM [dbo].[ProjectsDashboardView]
 `;
 
 export const getProjectByIdsQuery = `
@@ -22,7 +22,7 @@ SELECT [ProjectId]
       ,[Members]
       ,[ProjectUrl]
       ,[ProjectImageKeys]
-  FROM [ProjectHub11].[dbo].[ProjectDetailView]
+  FROM [dbo].[ProjectDetailView]
   WHERE ProjectId = @id
 `;
 
@@ -31,7 +31,7 @@ SELECT [ProjectId]
 export const getDegreesQuery = `
 SELECT [DegreeId]
       ,[Name]
-FROM [ProjectHub11].[dbo].[Degrees]
+FROM [dbo].[Degrees]
 `;
 
 // Subjects
@@ -39,5 +39,5 @@ FROM [ProjectHub11].[dbo].[Degrees]
 export const getSubjectsQuery = `
 SELECT [SubjectId]
       ,[Name]
-FROM [ProjectHub11].[dbo].[Subjects]
+FROM [dbo].[Subjects]
 `;

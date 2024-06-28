@@ -76,15 +76,15 @@ export const createNewProject = async (req, res) => {
     degreeId,
     professorName,
     members,
-    links, // url y description
-    technologies, // puede tener el id o el name - si tiene el id se relaciona directamente agrega directamente, sino se debe crear primero
+    links,
+    technologies: techs,
   } = req.body;
+  
+  const technologies = techs?.split(";") || [];
 
   if (title == null || description == null || creationDate == null) {
     return res.status(400).json({ msg: "Bad Request. Please fill all required fields" });
   }
-
-  // subir las imágenes a s3
 
   const projectImageKey = req?.files?.project ? await postImage(req?.files?.project[0], BUCKET_PROJECTS_FILE) : null;
   const coverImages = [];
@@ -94,7 +94,8 @@ export const createNewProject = async (req, res) => {
     const fileImageKey = await postImage(file, BUCKET_COVERS_FILE) ?? null;
     coverImages.push(fileImageKey);
   }
-
+  
+  if(coverImages.length==0) coverImages.push(projectImageKey);
 
   let pool;
   try {
@@ -115,7 +116,7 @@ export const createNewProject = async (req, res) => {
         .input("SubjectId", sql.Int, subjectId)
         .input("DegreeId", sql.Int, degreeId)
         .input("ProfessorName", sql.NVarChar, professorName)
-        .input("CreationDate", new Date())
+        .input("CreationDate", new Date(creationDate))
         .input("RepoUrl", sql.NVarChar, repoUrl)
         .input("ProjectUrl", sql.NVarChar, projectUrl)
         .input("Members", sql.NVarChar, members)
@@ -238,18 +239,18 @@ export const deleteProjectById = async (req, res) => {
       for (let i = 0; i < queries.length; i++) {
         let query = queries[i];
         const result = await request.batch(query);
-        if(i<2){
-          imageKeys = imageKeys.concat(result.recordset.map(i=>i.ImageKey));
+        if (i < 2) {
+          imageKeys = imageKeys.concat(result.recordset.map(i => i.ImageKey));
         }
       }
 
       for (let i = 0; i < imageKeys.length || 0; i++) {
         await deleteImage(imageKeys[i]);
       }
-      
+
       await transaction.commit();
       res.sendStatus(204);
-    } catch(error) {
+    } catch (error) {
       console.error(error);
       await transaction.rollback();
     }
